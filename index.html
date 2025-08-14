@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acelerador de Vendas — Conferência de Saldo</title>
+  <meta name="description" content="Dashboard Acelerador de Vendas — Conferência de Saldo (HTML/CSS/JS + Chart.js + localStorage)">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <style>
+    :root {
+      --bg-900: #0b0f17;
+      --bg-850: #0f1520;
+      --bg-800: #111827;
+      --bg-700: #1f2937;
+      --bg-600: #2b3648;
+      --bg-500: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --line: #2f3b52;
+      --primary-400: #67e8f9;
+      --primary-500: #22d3ee;
+      --primary-600: #06b6d4;
+      --primary-700: #0891b2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --chip-bg: #0f172a;
+      --focus: #93c5fd;
+      --shadow: 0 6px 22px rgba(0,0,0,0.35);
+      --shadow-sm: 0 4px 14px rgba(0,0,0,0.25);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, var(--bg-900), var(--bg-850));
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a { color: var(--primary-400); text-decoration: none; }
+
+    header.app-header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(10px);
+      background: color-mix(in oklab, var(--bg-900) 80%, transparent);
+      border-bottom: 1px solid var(--line);
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.2px;
+    }
+    .brand p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .user-badge {
+      margin-left: auto;
+      background: color-mix(in oklab, var(--primary-600) 20%, transparent);
+      border: 1px solid color-mix(in oklab, var(--primary-600) 60%, transparent);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--primary-400);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 18px auto 80px;
+      padding: 0 20px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .kpi-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    @media (max-width: 980px) {
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: linear-gradient(180deg, color-mix(in oklab, var(--bg-800) 86%, transparent), color-mix(in oklab, var(--bg-800) 70%, transparent));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 16px;
+      animation: cardIn 400ms ease-out both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .kpi {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, color-mix(in oklab, var(--bg-700) 80%, transparent), transparent 60%);
+      border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+    }
+    .kpi .label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .kpi .value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+    .kpi .delta { font-size: 12px; color: var(--primary-400); }
+
+    .toolbar {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+    }
+    .toolbar .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--chip-bg);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .chip.active {
+      background: color-mix(in oklab, var(--primary-700) 16%, transparent);
+      border-color: var(--primary-600);
+      color: var(--primary-400);
+    }
+
+    .spacer { flex: 1; }
+
+    .input, select, input[type="number"], input[type="text"], input[type="date"] {
+      background: var(--bg-700);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: color-mix(in oklab, var(--bg-700) 70%, transparent);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .btn:hover { background: color-mix(in oklab, var(--bg-600) 40%, transparent); }
+    .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .btn.primary {
+      border-color: var(--primary-600);
+      color: #001318;
+      background: linear-gradient(180deg, var(--primary-500), var(--primary-600));
+      font-weight: 700;
+    }
+    .btn.danger { border-color: var(--danger); color: #fff; background: color-mix(in oklab, var(--danger) 60%, transparent); }
+    .btn.ghost { background: transparent; }
+    .btn.small { padding: 6px 8px; font-size: 12px; border-radius: 8px; }
+
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .badge.pill { border-radius: 999px; }
+    .badge.pix { color: #0ea5e9; border-color: color-mix(in oklab, #0ea5e9 60%, transparent); background: color-mix(in oklab, #0ea5e9 12%, transparent); }
+    .badge.boleto { color: #f59e0b; border-color: color-mix(in oklab, #f59e0b 60%, transparent); background: color-mix(in oklab, #f59e0b 12%, transparent); }
+    .badge.cartao { color: #c084fc; border-color: color-mix(in oklab, #c084fc 60%, transparent); background: color-mix(in oklab, #c084fc 12%, transparent); }
+
+    .status.possui { color: #60a5fa; border-color: color-mix(in oklab, #60a5fa 60%, transparent); background: color-mix(in oklab, #60a5fa 12%, transparent); }
+    .status.pendente { color: #f97316; border-color: color-mix(in oklab, #f97316 60%, transparent); background: color-mix(in oklab, #f97316 12%, transparent); }
+    .status.pago { color: #22c55e; border-color: color-mix(in oklab, #22c55e 60%, transparent); background: color-mix(in oklab, #22c55e 12%, transparent); }
+    .status.solicitado { color: #eab308; border-color: color-mix(in oklab, #eab308 60%, transparent); background: color-mix(in oklab, #eab308 12%, transparent); }
+
+    .table-wrap { overflow: auto; border-radius: 12px; border: 1px solid var(--line); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 980px; }
+    thead th {
+      position: sticky; top: 0; z-index: 1;
+      background: color-mix(in oklab, var(--bg-800) 85%, transparent);
+      border-bottom: 1px solid var(--line);
+      text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
+      padding: 12px;
+    }
+    tbody td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+
+    tr.fade-in { animation: rowIn 260ms ease-out both; }
+    @keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .name-cell { display: flex; flex-direction: column; gap: 4px; }
+    .name-cell .muted { color: var(--muted); font-size: 12px; }
+
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .pagination { display: flex; gap: 6px; justify-content: center; padding-top: 12px; }
+    .page-btn {
+      min-width: 34px; height: 34px; padding: 0 10px;
+      border-radius: 8px; border: 1px solid var(--line);
+      background: var(--bg-700); color: var(--text);
+      cursor: pointer; font-size: 13px;
+    }
+    .page-btn.active { background: color-mix(in oklab, var(--primary-700) 16%, transparent); color: var(--primary-400); border-color: var(--primary-600); font-weight: 700; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .graph-header { display: flex; align-items: center; gap: 10px; }
+    .graph-container { display: none; margin-top: 12px; height: 320px; }
+    .graph-container.visible { display: block; animation: cardIn 300ms ease-out both; }
+
+    aside.drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: min(420px, 96vw);
+      background: color-mix(in oklab, var(--bg-800) 92%, transparent);
+      border-left: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateX(100%);
+      transition: transform 260ms ease;
+      z-index: 50;
+      display: flex; flex-direction: column;
+    }
+    aside.drawer.open { transform: translateX(0); }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .drawer-title { font-weight: 800; }
+    .drawer-body { padding: 16px; overflow: auto; }
+    .drawer-footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .hint { color: var(--muted); font-size: 12px; }
+
+    .pix-boleto-only { display: none; }
+    .pix-boleto-only.visible { display: contents; }
+
+    .pb-edit { display: none; }
+    .pb-edit.visible { display: block; }
+
+    .backdrop {
+      position: fixed; inset: 0; display: none; place-items: center;
+      background: color-mix(in oklab, #000 60%, transparent);
+      z-index: 60;
+      padding: 18px;
+    }
+    .backdrop.open { display: grid; }
+    .modal {
+      background: color-mix(in oklab, var(--bg-800) 96%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      max-width: 520px; width: 100%;
+      box-shadow: var(--shadow);
+    }
+    .modal-header, .modal-footer { padding: 14px 16px; }
+    .modal-header { border-bottom: 1px solid var(--line); }
+    .modal-body { padding: 16px; }
+    .modal-footer { border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+
+    footer.app-footer { max-width: 1200px; margin: 24px auto; padding: 0 20px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <img class="brand-logo" src="logo-av.png" alt="Acelerador de Vendas">
+        <div>
+          <h1>Acelerador de Vendas — Conferência de Saldo</h1>
+          <p>Controle diário, KPIs e evolução mensal</p>
+        </div>
+      </div>
+      <div class="user-badge">Gestor</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid kpi-grid">
+      <div class="card kpi">
+        <div class="label">Total de clientes</div>
+        <div id="kpiTotal" class="value">0</div>
+        <div class="delta">Base ativa</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">Investimento total (mês)</div>
+        <div id="kpiInvestimento" class="value">R$ 0,00</div>
+        <div class="delta">Soma de investimentos</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">PIX/BOLETO pendentes</div>
+        <div id="kpiPendentes" class="value">0</div>
+        <div class="delta">Não pagos</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">Conferidos hoje</div>
+        <div id="kpiConferidosHoje" class="value">0</div>
+        <div class="delta">Registros do dia</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="graph-header">
+        <button id="toggleGrafico" class="btn small" aria-pressed="false">Mostrar gráfico</button>
+        <span class="hint">Evolução mensal do investimento (criadas por mês)</span>
+      </div>
+      <div id="graficoEvolucao" class="graph-container" aria-hidden="true">
+        <canvas id="evolucaoChart" aria-label="Gráfico de evolução mensal" role="img"></canvas>
+      </div>
+    </section>
+
+    <section class="card toolbar">
+      <div class="row">
+        <div class="chip-group" id="chipsForma" aria-label="Filtro por forma de pagamento">
+          <button type="button" class="chip active" data-pay="ALL">Todos</button>
+          <button type="button" class="chip" data-pay="PIX">PIX</button>
+          <button type="button" class="chip" data-pay="BOLETO">Boleto</button>
+          <button type="button" class="chip" data-pay="CARTAO">Cartão</button>
+        </div>
+        <div class="chip-group" id="chipsStatus" aria-label="Filtro por status">
+          <button type="button" class="chip active" data-st="ALL">Todos</button>
+          <button type="button" class="chip" data-st="PEND">Pendentes</button>
+          <button type="button" class="chip" data-st="HOJE">Hoje</button>
+          <button type="button" class="chip" data-st="ANTES">Antes</button>
+        </div>
+        <div class="spacer"></div>
+        <input id="search" class="input" type="text" placeholder="Buscar por nome..." autocomplete="off">
+        <select id="sortSelect" class="input" aria-label="Ordenação">
+          <option value="invest_desc">Investimento ↓</option>
+          <option value="invest_asc">Investimento ↑</option>
+          <option value="nome_asc">Nome A→Z</option>
+          <option value="nome_desc">Nome Z→A</option>
+          <option value="criado_desc">Criado recente</option>
+          <option value="criado_asc">Criado antigo</option>
+        </select>
+        <button id="clearFilters" class="btn ghost small" title="Limpar filtros">Limpar</button>
+        <button id="openDrawer" class="btn primary small">+ Adicionar cliente</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome / Criado em</th>
+              <th>Forma</th>
+              <th>Situação</th>
+              <th>Saldo Meta</th>
+              <th>Saldo Google</th>
+              <th>Investimento Total</th>
+              <th>Conferido hoje?</th>
+              <th>Última adição</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="pagination" class="pagination"></div>
+    </section>
+  </main>
+
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-title">Novo cliente</div>
+      <button id="closeDrawer" class="btn ghost small" aria-label="Fechar">✕</button>
+    </div>
+    <form id="clienteForm" class="drawer-body">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="nome">Nome</label>
+          <input id="nome" name="nome" type="text" class="input" placeholder="Ex.: Loja Exemplo Ltda" required>
+        </div>
+        <div class="form-field full">
+          <label for="forma">Forma de pagamento</label>
+          <select id="forma" name="forma" class="input" required>
+            <option value="PIX">PIX</option>
+            <option value="BOLETO">BOLETO</option>
+            <option value="CARTÃO CRÉDITO">CARTÃO CRÉDITO</option>
+          </select>
+        </div>
+
+        <div class="pix-boleto-only visible" id="pixBoletoFields">
+          <div class="form-field">
+            <label for="situacao">Situação</label>
+            <select id="situacao" name="situacao" class="input">
+              <option value="Possui">Possui</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Pago">Pago</option>
+              <option value="Solicitado">Solicitado</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="ultimaAdicao">Última adição</label>
+            <input id="ultimaAdicao" name="ultimaAdicao" type="date" class="input">
+          </div>
+          <div class="form-field">
+            <label for="saldoMeta">Saldo Meta</label>
+            <input id="saldoMeta" name="saldoMeta" type="number" step="0.01" min="0" class="input" placeholder="0,00">
+          </div>
+          <div class="form-field">
+            <label for="saldoGoogle">Saldo Google</label>
+            <input id="saldoGoogle" name="saldoGoogle" type="number" step="0.01" min="0" class="input" placeholder="0,00">
+          </div>
+          <div class="form-field full">
+            <label class="hint"><input id="confHoje" type="checkbox"> Conferir hoje?</label>
+          </div>
+        </div>
+
+        <div class="form-field full">
+          <label for="investimentoTotal">Investimento total</label>
+          <input id="investimentoTotal" name="investimentoTotal" type="number" step="0.01" min="0" class="input" placeholder="0,00" required>
+        </div>
+      </div>
+    </form>
+    <div class="drawer-footer">
+      <button id="cancelar" class="btn ghost">Cancelar</button>
+      <button id="salvarCliente" class="btn primary" form="clienteForm" type="submit">Salvar</button>
+    </div>
+  </aside>
+
+  <div id="modalBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header"><strong id="modalTitle">Confirmar exclusão</strong></div>
+      <div class="modal-body">
+        <p id="modalTexto">Tem certeza que deseja excluir?</p>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDelete" class="btn ghost">Cancelar</button>
+        <button id="confirmDelete" class="btn danger">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <p>Os dados são salvos localmente no seu navegador (localStorage). Chave: <code>av_conferencia_saldo_dashboard_v3</code>.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const LS_KEY = 'av_conferencia_saldo_dashboard_v3';
+
+    const state = {
+      clientes: [],
+      page: 1,
+      pageSize: 20,
+      sort: 'invest_desc',
+      search: '',
+      fPay: 'ALL',
+      fStatus: 'ALL'
+    };
+
+    let evolucaoChart = null;
+    let deleteTargetId = null;
+
+    function pad2(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function hojeISO() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = pad2(d.getMonth() + 1);
+      const day = pad2(d.getDate());
+      return `${y}-${m}-${day}`;
+    }
+
+    function moedaBRL(n) {
+      if (n === null || n === undefined || n === '') return '—';
+      const num = Number(n);
+      if (!Number.isFinite(num)) return '—';
+      try {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+      } catch (e) {
+        return `R$ ${num.toFixed(2)}`;
+      }
+    }
+
+    function formatDateISOtoBR(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      if (!y || !m || !d) return '—';
+      return `${d}/${m}/${y}`;
+    }
+
+    function uid() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function badgeForma(form) {
+      if (form === 'PIX') return '<span class="badge pix">PIX</span>';
+      if (form === 'BOLETO') return '<span class="badge boleto">BOLETO</span>';
+      return '<span class="badge cartao">CARTÃO</span>';
+    }
+
+    function badgeSituacao(st) {
+      if (!st) return '—';
+      const map = {
+        'Possui': 'possui',
+        'Pendente': 'pendente',
+        'Pago': 'pago',
+        'Solicitado': 'solicitado'
+      };
+      const cls = map[st] || 'pendente';
+      return `<span class="badge status ${cls}">${st}</span>`;
+    }
+
+    function persist() {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Erro ao salvar no localStorage', e);
+      }
+    }
+
+    function randomBetween(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function daysAgo(n) {
+      const now = new Date();
+      now.setDate(now.getDate() - n);
+      return now.getTime();
+    }
+
+    function randomDateISOWithin30Days() {
+      const days = Math.floor(randomBetween(0, 30));
+      const d = new Date(daysAgo(days));
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    }
+
+    function load() {
+      try {
+        const stored = localStorage.getItem(LS_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          Object.assign(state, parsed || {});
+          return;
+        }
+      } catch (e) {
+        console.warn('Falha ao ler localStorage, criando seed...', e);
+      }
+
+      const seedNomes = [
+        'Loja Aurora', 'Mercado Sol Nascente', 'TechNova Ltda', 'Bela Vista Modas', 'Café Horizonte',
+        'Oficina Rota 66', 'Farmácia Vida Mais', 'Papelaria Criativa', 'Pet Feliz', 'Auto Peças Estrela',
+        'Pão & Cia', 'Clínica Bem-Estar', 'Studio Arte & Design', 'Móveis Planalto', 'Super Fácil Atacado',
+        'Delícias Gourmet', 'Viagens Mundo Novo', 'Luz & Som Eventos', 'Constrular Materiais', 'Green Garden'
+      ];
+
+      const seed = seedNomes.map((nome, idx) => {
+        const formas = ['PIX', 'BOLETO', 'CARTÃO CRÉDITO'];
+        const forma = formas[Math.floor(Math.random() * formas.length)];
+        const criadoEmTs = daysAgo(Math.floor(randomBetween(0, 30)));
+        const investimentoTotal = Math.round(randomBetween(300, 18000) * 100) / 100;
+
+        const base = {
+          id: uid(),
+          criadoEm: criadoEmTs,
+          nome,
+          forma,
+          investimentoTotal,
+          conferidoEm: ''
+        };
+
+        if (forma === 'PIX' || forma === 'BOLETO') {
+          const sts = ['Possui', 'Pendente', 'Pago', 'Solicitado'];
+          const situacao = sts[Math.floor(Math.random() * sts.length)];
+          const ultimaAdicao = Math.random() > 0.5 ? randomDateISOWithin30Days() : '';
+          const saldoMeta = Math.random() > 0.4 ? Math.round(randomBetween(0, 10000) * 100) / 100 : 0;
+          const saldoGoogle = Math.random() > 0.4 ? Math.round(randomBetween(0, 10000) * 100) / 100 : 0;
+          const conferidoEm = Math.random() > 0.5 ? hojeISO() : (Math.random() > 0.6 ? randomDateISOWithin30Days() : '');
+          return { ...base, situacao, saldoMeta, saldoGoogle, ultimaAdicao, conferidoEm };
+        }
+        return base;
+      });
+
+      state.clientes = seed;
+      state.page = 1;
+      state.sort = 'invest_desc';
+      state.search = '';
+      state.fPay = 'ALL';
+      state.fStatus = 'ALL';
+      persist();
+    }
+
+    function applyFilters(arr) {
+      let result = Array.from(arr);
+      const q = (state.search || '').trim().toLowerCase();
+      if (q) {
+        result = result.filter(c => (c.nome || '').toLowerCase().includes(q));
+      }
+      if (state.fPay === 'PIX') {
+        result = result.filter(c => c.forma === 'PIX');
+      } else if (state.fPay === 'BOLETO') {
+        result = result.filter(c => c.forma === 'BOLETO');
+      } else if (state.fPay === 'CARTAO') {
+        result = result.filter(c => c.forma === 'CARTÃO CRÉDITO');
+      }
+
+      if (state.fStatus !== 'ALL') {
+        const today = hojeISO();
+        result = result.filter(c => {
+          const isPB = (c.forma === 'PIX' || c.forma === 'BOLETO');
+          if (!isPB) return true;
+          if (state.fStatus === 'PEND') return (c.situacao || '') !== 'Pago';
+          if (state.fStatus === 'HOJE') return (c.conferidoEm || '') === today;
+          if (state.fStatus === 'ANTES') return !!(c.conferidoEm && c.conferidoEm !== today);
+          return true;
+        });
+      }
+      return result;
+    }
+
+    function applySort(arr) {
+      const sorted = Array.from(arr);
+      switch (state.sort) {
+        case 'invest_asc':
+          sorted.sort((a, b) => (a.investimentoTotal || 0) - (b.investimentoTotal || 0));
+          break;
+        case 'nome_asc':
+          sorted.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+          break;
+        case 'nome_desc':
+          sorted.sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
+          break;
+        case 'criado_asc':
+          sorted.sort((a, b) => (a.criadoEm || 0) - (b.criadoEm || 0));
+          break;
+        case 'criado_desc':
+          sorted.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+          break;
+        case 'invest_desc':
+        default:
+          sorted.sort((a, b) => (b.investimentoTotal || 0) - (a.investimentoTotal || 0));
+          break;
+      }
+      return sorted;
+    }
+
+    function animateCount(el, endValue, durationMs, formatter) {
+      const start = performance.now();
+      const from = 0;
+      function step(now) {
+        const t = Math.min(1, (now - start) / durationMs);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const val = from + (endValue - from) * eased;
+        el.textContent = formatter ? formatter(val) : Math.round(val).toString();
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function renderKPIs() {
+      const total = state.clientes.length;
+      const totalInvest = state.clientes.reduce((sum, c) => sum + (Number(c.investimentoTotal) || 0), 0);
+      const pendentes = state.clientes.filter(c => (c.forma === 'PIX' || c.forma === 'BOLETO') && (c.situacao || '') !== 'Pago').length;
+      const confHoje = state.clientes.filter(c => (c.forma === 'PIX' || c.forma === 'BOLETO') && (c.conferidoEm || '') === hojeISO()).length;
+
+      const elTotal = document.getElementById('kpiTotal');
+      const elInvest = document.getElementById('kpiInvestimento');
+      const elPend = document.getElementById('kpiPendentes');
+      const elHoje = document.getElementById('kpiConferidosHoje');
+
+      animateCount(elTotal, total, 600, v => Math.round(v).toString());
+      animateCount(elPend, pendentes, 600, v => Math.round(v).toString());
+      animateCount(elHoje, confHoje, 600, v => Math.round(v).toString());
+      animateCount(elInvest, totalInvest, 900, v => moedaBRL(v));
+    }
+
+    function getMonthlyInvestimentoData() {
+      const map = new Map();
+      for (const c of state.clientes) {
+        const d = new Date(c.criadoEm || Date.now());
+        const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+        map.set(key, (map.get(key) || 0) + (Number(c.investimentoTotal) || 0));
+      }
+      const keys = Array.from(map.keys()).sort();
+      const labels = keys.map(k => {
+        const [y, m] = k.split('-');
+        return `${m}/${y}`;
+      });
+      const values = keys.map(k => map.get(k));
+      return { labels, values };
+    }
+
+    function renderEvolucaoGrafico() {
+      const ctx = document.getElementById('evolucaoChart');
+      if (!ctx) return;
+      const { labels, values } = getMonthlyInvestimentoData();
+      if (evolucaoChart) {
+        evolucaoChart.destroy();
+        evolucaoChart = null;
+      }
+      evolucaoChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Investimento mensal',
+            data: values,
+            borderColor: '#22d3ee',
+            backgroundColor: 'rgba(34,211,238,0.18)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 6,
+            pointHoverRadius: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 900 },
+          plugins: {
+            legend: { labels: { color: '#9ca3af' } },
+            tooltip: { callbacks: { label: ctx => moedaBRL(ctx.parsed.y) } }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#9ca3af' },
+              grid: { color: 'rgba(255,255,255,0.06)' }
+            },
+            y: {
+              ticks: { color: '#9ca3af', callback: v => moedaBRL(v) },
+              grid: { color: 'rgba(255,255,255,0.06)' }
+            }
+          }
+        }
+      });
+    }
+
+    function toggleGrafico() {
+      const btn = document.getElementById('toggleGrafico');
+      const cont = document.getElementById('graficoEvolucao');
+      const visible = !cont.classList.contains('visible');
+      cont.classList.toggle('visible', visible);
+      cont.setAttribute('aria-hidden', (!visible).toString());
+      btn.setAttribute('aria-pressed', visible.toString());
+      btn.textContent = visible ? 'Ocultar gráfico' : 'Mostrar gráfico';
+      if (visible) {
+        setTimeout(renderEvolucaoGrafico, 0);
+      } else if (evolucaoChart) {
+        evolucaoChart.destroy();
+        evolucaoChart = null;
+      }
+    }
+
+    function renderPagination(totalPages) {
+      const pag = document.getElementById('pagination');
+      pag.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      const makeBtn = (label, page, disabled = false, active = false) => {
+        const b = document.createElement('button');
+        b.className = 'page-btn' + (active ? ' active' : '');
+        b.textContent = label;
+        if (disabled) b.disabled = true;
+        b.dataset.page = String(page);
+        return b;
+      };
+
+      pag.appendChild(makeBtn('<', Math.max(1, state.page - 1), state.page === 1, false));
+
+      const span = 3;
+      const start = Math.max(1, state.page - span);
+      const end = Math.min(totalPages, state.page + span);
+      for (let p = start; p <= end; p++) {
+        pag.appendChild(makeBtn(String(p), p, false, p === state.page));
+      }
+
+      pag.appendChild(makeBtn('>', Math.min(totalPages, state.page + 1), state.page === totalPages, false));
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+
+      const filtered = applyFilters(state.clientes);
+      const sorted = applySort(filtered);
+      const total = sorted.length;
+      const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+      if (state.page > totalPages) state.page = totalPages;
+      if (state.page < 1) state.page = 1;
+
+      const start = (state.page - 1) * state.pageSize;
+      const pageItems = sorted.slice(start, start + state.pageSize);
+
+      if (pageItems.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="9" style="text-align:center; padding:20px; color: var(--muted);">Nenhum cliente encontrado.</td>';
+        tbody.appendChild(tr);
+        renderPagination(totalPages);
+        return;
+      }
+
+      for (const c of pageItems) {
+        const tr = document.createElement('tr');
+        tr.classList.add('fade-in');
+        tr.dataset.id = c.id;
+        if (!c._editing) {
+          const criado = c.criadoEm ? formatDateISOtoBR(`${new Date(c.criadoEm).getFullYear()}-${pad2(new Date(c.criadoEm).getMonth()+1)}-${pad2(new Date(c.criadoEm).getDate())}`) : '—';
+          const isPB = (c.forma === 'PIX' || c.forma === 'BOLETO');
+          const conferidoHoje = isPB && (c.conferidoEm || '') === hojeISO();
+          tr.innerHTML = `
+            <td>
+              <div class="name-cell">
+                <div>${c.nome || ''}</div>
+                <div class="muted">Criado em: ${criado}</div>
+              </div>
+            </td>
+            <td>${badgeForma(c.forma)}</td>
+            <td>${isPB ? badgeSituacao(c.situacao) : '—'}</td>
+            <td>${isPB ? moedaBRL(c.saldoMeta) : '—'}</td>
+            <td>${isPB ? moedaBRL(c.saldoGoogle) : '—'}</td>
+            <td>${moedaBRL(c.investimentoTotal)}</td>
+            <td>${isPB ? (conferidoHoje ? '✅' : '—') : '—'}</td>
+            <td>${isPB ? formatDateISOtoBR(c.ultimaAdicao || '') : '—'}</td>
+            <td>
+              <div class="actions">
+                <button class="btn small" data-action="confirm" ${isPB ? '' : 'disabled'}>Conferir</button>
+                <button class="btn small" data-action="edit">Editar</button>
+                <button class="btn small danger" data-action="delete">Excluir</button>
+              </div>
+            </td>`;
+        } else {
+          const isPB = (c.forma === 'PIX' || c.forma === 'BOLETO');
+          tr.innerHTML = `
+            <td>
+              <div class="form-field"><input class="input" type="text" data-field="nome" value="${c.nome || ''}"></div>
+            </td>
+            <td>
+              <select class="input forma-select" data-field="forma">
+                <option value="PIX" ${c.forma === 'PIX' ? 'selected' : ''}>PIX</option>
+                <option value="BOLETO" ${c.forma === 'BOLETO' ? 'selected' : ''}>BOLETO</option>
+                <option value="CARTÃO CRÉDITO" ${c.forma === 'CARTÃO CRÉDITO' ? 'selected' : ''}>CARTÃO CRÉDITO</option>
+              </select>
+            </td>
+            <td>
+              <div class="pb-edit ${isPB ? 'visible' : ''}">
+                <select class="input" data-field="situacao">
+                  <option value="Possui" ${c.situacao === 'Possui' ? 'selected' : ''}>Possui</option>
+                  <option value="Pendente" ${c.situacao === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                  <option value="Pago" ${c.situacao === 'Pago' ? 'selected' : ''}>Pago</option>
+                  <option value="Solicitado" ${c.situacao === 'Solicitado' ? 'selected' : ''}>Solicitado</option>
+                </select>
+              </div>
+            </td>
+            <td>
+              <div class="pb-edit ${isPB ? 'visible' : ''}">
+                <input class="input" type="number" step="0.01" min="0" data-field="saldoMeta" value="${Number(c.saldoMeta || 0)}">
+              </div>
+            </td>
+            <td>
+              <div class="pb-edit ${isPB ? 'visible' : ''}">
+                <input class="input" type="number" step="0.01" min="0" data-field="saldoGoogle" value="${Number(c.saldoGoogle || 0)}">
+              </div>
+            </td>
+            <td><input class="input" type="number" step="0.01" min="0" data-field="investimentoTotal" value="${Number(c.investimentoTotal || 0)}"></td>
+            <td>${isPB ? ((c.conferidoEm || '') === hojeISO() ? '✅' : '—') : '—'}</td>
+            <td>
+              <div class="pb-edit ${isPB ? 'visible' : ''}">
+                <input class="input" type="date" data-field="ultimaAdicao" value="${c.ultimaAdicao || ''}">
+              </div>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="btn small" data-action="save">Salvar</button>
+                <button class="btn small ghost" data-action="cancel">Cancelar</button>
+              </div>
+            </td>`;
+        }
+        tbody.appendChild(tr);
+      }
+
+      renderPagination(totalPages);
+    }
+
+    function markActiveChip(groupEl, value, attr) {
+      const chips = groupEl.querySelectorAll('.chip');
+      chips.forEach(ch => ch.classList.remove('active'));
+      const selector = `.chip[${attr}="${value}"]`;
+      const active = groupEl.querySelector(selector);
+      if (active) active.classList.add('active');
+    }
+
+    function openDrawer() {
+      const drawer = document.getElementById('drawer');
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('drawer');
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      resetForm();
+    }
+
+    function toggleFormByForma(value) {
+      const fields = document.getElementById('pixBoletoFields');
+      const show = (value === 'PIX' || value === 'BOLETO');
+      fields.classList.toggle('visible', show);
+    }
+
+    function resetForm() {
+      const form = document.getElementById('clienteForm');
+      form.reset();
+      document.getElementById('forma').value = 'PIX';
+      toggleFormByForma('PIX');
+    }
+
+    function openDeleteModal(id, nome) {
+      deleteTargetId = id;
+      const bd = document.getElementById('modalBackdrop');
+      const txt = document.getElementById('modalTexto');
+      txt.textContent = `Tem certeza que deseja excluir "${nome}"?`;
+      bd.classList.add('open');
+      bd.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      const bd = document.getElementById('modalBackdrop');
+      bd.classList.remove('open');
+      bd.setAttribute('aria-hidden', 'true');
+    }
+
+    function refreshAll() {
+      renderKPIs();
+      renderTable();
+      const cont = document.getElementById('graficoEvolucao');
+      if (cont.classList.contains('visible')) {
+        renderEvolucaoGrafico();
+      }
+    }
+
+    document.addEventListener('click', (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target.matches('.chip[data-pay]')) {
+        const value = target.getAttribute('data-pay') || 'ALL';
+        state.fPay = value;
+        state.page = 1;
+        persist();
+        markActiveChip(document.getElementById('chipsForma'), value, 'data-pay');
+        renderTable();
+        return;
+      }
+
+      if (target.matches('.chip[data-st]')) {
+        const value = target.getAttribute('data-st') || 'ALL';
+        state.fStatus = value;
+        state.page = 1;
+        persist();
+        markActiveChip(document.getElementById('chipsStatus'), value, 'data-st');
+        renderTable();
+        return;
+      }
+
+      if (target.matches('#toggleGrafico')) {
+        toggleGrafico();
+        return;
+      }
+
+      if (target.matches('#openDrawer')) { openDrawer(); return; }
+      if (target.matches('#closeDrawer') || target.matches('#cancelar')) { closeDrawer(); return; }
+
+      if (target.matches('#clearFilters')) {
+        state.fPay = 'ALL';
+        state.fStatus = 'ALL';
+        state.search = '';
+        state.sort = 'invest_desc';
+        state.page = 1;
+        persist();
+        document.getElementById('search').value = '';
+        document.getElementById('sortSelect').value = 'invest_desc';
+        markActiveChip(document.getElementById('chipsForma'), 'ALL', 'data-pay');
+        markActiveChip(document.getElementById('chipsStatus'), 'ALL', 'data-st');
+        renderTable();
+        return;
+      }
+
+      if (target.matches('.page-btn')) {
+        const p = Number(target.dataset.page || '1');
+        if (!Number.isFinite(p)) return;
+        state.page = p;
+        persist();
+        renderTable();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const actionBtn = target.closest('[data-action]');
+      if (actionBtn) {
+        const action = actionBtn.getAttribute('data-action');
+        const tr = actionBtn.closest('tr');
+        if (!tr) return;
+        const id = tr.dataset.id;
+        const idx = state.clientes.findIndex(c => c.id === id);
+        if (idx === -1) return;
+        const client = state.clientes[idx];
+
+        if (action === 'edit') {
+          client._editing = true;
+          persist();
+          renderTable();
+          return;
+        }
+        if (action === 'cancel') {
+          delete client._editing;
+          persist();
+          renderTable();
+          return;
+        }
+        if (action === 'save') {
+          const get = (sel) => tr.querySelector(sel);
+          const nome = get('input[data-field="nome"]').value.trim();
+          const forma = get('select[data-field="forma"]').value;
+          const investimentoTotal = parseFloat(get('input[data-field="investimentoTotal"]').value || '0') || 0;
+
+          const updated = { ...client, nome, forma, investimentoTotal };
+          if (forma === 'PIX' || forma === 'BOLETO') {
+            const situacao = get('select[data-field="situacao"]').value;
+            const saldoMeta = parseFloat(get('input[data-field="saldoMeta"]').value || '0') || 0;
+            const saldoGoogle = parseFloat(get('input[data-field="saldoGoogle"]').value || '0') || 0;
+            const ultimaAdicao = get('input[data-field="ultimaAdicao"]').value || '';
+            Object.assign(updated, { situacao, saldoMeta, saldoGoogle, ultimaAdicao });
+          } else {
+            updated.situacao = undefined;
+            updated.saldoMeta = undefined;
+            updated.saldoGoogle = undefined;
+            updated.ultimaAdicao = undefined;
+            updated.conferidoEm = '';
+          }
+          updated._editing = false;
+          state.clientes.splice(idx, 1, updated);
+          persist();
+          refreshAll();
+          return;
+        }
+        if (action === 'confirm') {
+          if (client.forma === 'PIX' || client.forma === 'BOLETO') {
+            client.conferidoEm = hojeISO();
+            persist();
+            refreshAll();
+          }
+          return;
+        }
+        if (action === 'delete') {
+          openDeleteModal(client.id, client.nome || '');
+          return;
+        }
+      }
+    });
+
+    document.addEventListener('change', (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target.matches('.forma-select')) {
+        const tr = target.closest('tr');
+        const isPB = target.value === 'PIX' || target.value === 'BOLETO';
+        tr.querySelectorAll('.pb-edit').forEach(el => el.classList.toggle('visible', isPB));
+        return;
+      }
+
+      if (target.matches('#sortSelect')) {
+        state.sort = target.value;
+        persist();
+        renderTable();
+        return;
+      }
+
+      if (target.matches('#forma')) {
+        toggleFormByForma(target.value);
+        return;
+      }
+    });
+
+    document.getElementById('search').addEventListener('input', (ev) => {
+      const val = ev.target.value || '';
+      state.search = val;
+      state.page = 1;
+      persist();
+      renderTable();
+    });
+
+    document.getElementById('clienteForm').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const nome = document.getElementById('nome').value.trim();
+      const forma = document.getElementById('forma').value;
+      const investimentoTotal = parseFloat(document.getElementById('investimentoTotal').value || '0') || 0;
+
+      const novo = {
+        id: uid(),
+        criadoEm: Date.now(),
+        nome,
+        forma,
+        investimentoTotal,
+        conferidoEm: ''
+      };
+
+      if (forma === 'PIX' || forma === 'BOLETO') {
+        novo.situacao = document.getElementById('situacao').value;
+        novo.saldoMeta = parseFloat(document.getElementById('saldoMeta').value || '0') || 0;
+        novo.saldoGoogle = parseFloat(document.getElementById('saldoGoogle').value || '0') || 0;
+        novo.ultimaAdicao = document.getElementById('ultimaAdicao').value || '';
+        if (document.getElementById('confHoje').checked) {
+          novo.conferidoEm = hojeISO();
+        }
+      }
+
+      state.clientes.push(novo);
+      const totalPages = Math.max(1, Math.ceil(applyFilters(state.clientes).length / state.pageSize));
+      state.page = totalPages;
+      persist();
+      closeDrawer();
+      refreshAll();
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 0);
+    });
+
+    document.getElementById('confirmDelete').addEventListener('click', () => {
+      if (!deleteTargetId) return;
+      const idx = state.clientes.findIndex(c => c.id === deleteTargetId);
+      if (idx !== -1) {
+        state.clientes.splice(idx, 1);
+        const totalPages = Math.max(1, Math.ceil(applyFilters(state.clientes).length / state.pageSize));
+        if (state.page > totalPages) state.page = totalPages;
+        persist();
+        refreshAll();
+      }
+      closeDeleteModal();
+    });
+    document.getElementById('cancelDelete').addEventListener('click', closeDeleteModal);
+    document.getElementById('modalBackdrop').addEventListener('click', (ev) => {
+      if (ev.target === ev.currentTarget) closeDeleteModal();
+    });
+
+    function init() {
+      load();
+      renderKPIs();
+      markActiveChip(document.getElementById('chipsForma'), state.fPay || 'ALL', 'data-pay');
+      markActiveChip(document.getElementById('chipsStatus'), state.fStatus || 'ALL', 'data-st');
+      document.getElementById('sortSelect').value = state.sort || 'invest_desc';
+      document.getElementById('search').value = state.search || '';
+      renderTable();
+    }
+
+    init();
+  </script>
+</body>
+</html>
